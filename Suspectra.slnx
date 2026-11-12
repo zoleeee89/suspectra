@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="Suspectra.csproj">
+    <Deploy Solution="Debug|*" />
+  </Project>
+</Solution>

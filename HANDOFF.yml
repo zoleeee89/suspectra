@@ -1,0 +1,61 @@
+# Átadás a következő Claude Code sessionnek. Állapot: 2026-11-12.
+# Titok nincs ebben a fájlban, és ide nem is szabad titkot írni.
+
+projekt:
+  nev: Suspectra
+  leiras: Gyilkossági logikai rejtvény (sudoku-szerű rács + nyomozás) Androidra és iOS-re. Saját név, saját grafika, saját szabálymegfogalmazás; a "Murdoku" név védjegy (függőben), nem használjuk.
+  mappa: C:\Users\pzoli\Suspectra (javasolt, a Documents mappát a Controlled Folder Access tiltja)
+  github: https://github.com/zoleeee89/suspectra (fő ág master)
+  minta: A Retrokon (zoleeee89/RetroGames) felépítését követi.
+
+felhasznalo:
+  nyelv: magyar
+  szabalyok:
+    - Commit és push csak kérésre ("tedd fel", "commitold le").
+    - Jelszót, tokent soha nem kérünk és nem íratunk ki.
+    - Saját gépen futó alkalmazást nem állítunk le.
+    - Más játék (Murdoku, Cluedo) nevét, szereplőit, grafikáját nem másoljuk.
+
+technika:
+  alkalmazas:
+    keret: .NET 10 MAUI, a teljes felület HybridWebView-ban (HTML, CSS, JS)
+    azonosito: com.pzoli.suspectra
+    wwwroot: Resources/Raw/wwwroot
+    fajlok:
+      - index.html (egyoldalas app)
+      - js/rules.js – generátor, megoldó (egyértelműség) és emberi logikájú dedukció (találgatás nélkül megoldható-e); DOM nélküli, Node-ban tesztelhető
+      - js/art.js – padlók, bútorok és portrék SVG-ben (50 egységes cellára rajzolva)
+      - js/app.js – képernyők: kezdőlap (napi ügy), aktatár (3 nehézség × 30 ügy + heti napi ügyek), nyomozás, ítélet, beállítások
+      - js/sus.js – mentés, beállítások, nyelv, hang, natív híd, reklámütemezés (window.Sus)
+      - js/strings.js – nyelvek (most hu, en)
+      - css/app.css, css/fonts.css, fonts/ (Fraunces, Inter, Courier Prime – OFL, helyben, net nélkül is megy)
+    nativ: MainPage.xaml.cs (rezgés tap/error/win, Android vissza gomb → Sus.goHub, reklám, linkek), AdService.cs (Retrokonból)
+    jatekszabalyok:
+      - Minden sorban és oszlopban pontosan egy ember (gyanúsított vagy áldozat).
+      - Blokkoló bútoron senki; ülőhely és szőnyeg megengedett.
+      - A gyilkos az egyetlen gyanúsított, aki az áldozattal egy szobában van.
+      - Minden nyom igaz; minden pálya egyértelmű és találgatás nélkül levezethető (deduce()).
+    szintek: easy 5×5 / 4 szoba, medium 6×6 / 5 szoba, hard 7×7 / 6 szoba
+    azonositok: "napi ügy d-ÉÉÉÉ-HH-NN (UTC), aktatár e-1..30, m-1..30, h-1..30; seed = azonosító, minden telefonon ugyanaz az ügy"
+    mentes: "localStorage: sus.settings, sus.progress (solved, saved), sus.ads"
+  teszt: node tests/rules.test.js 60  (mindhárom szint: egyértelmű, levezethető, szabályos, determinisztikus, időmérés)
+  android_build: dotnet build Suspectra.csproj -f net10.0-android -p:AndroidSdkDirectory="C:\Program Files (x86)\Android\android-sdk" -p:JavaSdkDirectory="C:\Program Files\Android\openjdk"
+
+allapot:
+  kesz:
+    - MAUI váz a Retrokonból átnevezve (Suspectra), saját ikon és indítókép (nagyító alaprajzzal)
+    - Pályagenerátor + megoldó + dedukciós ellenőrzés, Node-teszttel (180 pálya hiba nélkül; nehéz pálya átlag ~20 ms, max ~0,6 s)
+    - Teljes játékmenet: Toll / Ceruza (színes pöttyök) / Radír / Tipp / Vádemelés + gyilkos kiválasztása, ütközésjelzés, nyomok automatikus kipipálása, időmérő, csillagok
+    - Kezdőlap napi üggyel és sorozattal, aktatár heti csíkkal és szintenkénti feloldással, ítélet-újság, beállítások, szabályok első induláskor
+    - Böngészőben kipróbálva (Chromium, 390×844 és 360×640, hu és en), konzolhiba nincs
+  reklam: Csak a Google tesztegységei (Android és iOS). Éles előtt AdMob-ban létre kell hozni az appot, és cserélni: AndroidManifest, Info.plist, AdService.AdUnits.
+  kovetkezo_lepesek:
+    - Visual Studióban Android-build és futtatás telefonon/emulátoron
+    - A maradék 11 nyelv (de, fr, it, es, pt, pl, nl, sk, ro, ja, zh) a strings.js-be, majd a nyelvválasztóba
+    - Weboldal + jogi oldalak (privacy, support, delete) a suspectra.cointrail.hu alá (a MainPage és a sus.js ezt a címet használja), app-ads.txt
+    - Esetleg szerver (napi ranglista) a Retrokon PHP/PostgreSQL mintájára; most minden offline
+    - Hang/animáció finomítás, oktató első pálya, bolti képek és szövegek
+  nincs_ellenorizve:
+    - .NET MAUI build (ebben a környezetben nincs dotnet SDK) – Android és iOS fordítás
+    - HybridWebView-ban futás telefonon (érintés, vissza gomb, rezgés, reklám)
+    - iOS Info.plist és AdMob beállítások a Suspectra névre (a Retrokonból átvett értékek, tesztazonosítóval)

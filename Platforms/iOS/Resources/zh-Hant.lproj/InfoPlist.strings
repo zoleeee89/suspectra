@@ -1,0 +1,2 @@
+/* The tracking question (App Tracking Transparency). */
+"NSUserTrackingUsageDescription" = "這能讓我們顯示與你更相關的廣告。無論是否允許，遊戲都能照常遊玩。";

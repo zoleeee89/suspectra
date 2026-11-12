@@ -1,0 +1,2 @@
+/* The tracking question (App Tracking Transparency). */
+"NSUserTrackingUsageDescription" = "Cela nous permet d'afficher des publicités plus pertinentes pour toi. Les jeux fonctionnent de la même façon dans les deux cas.";
