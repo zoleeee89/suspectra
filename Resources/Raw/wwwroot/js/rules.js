@@ -91,6 +91,7 @@
 	const SUSPECTS = ['doctor', 'count', 'baroness', 'butler', 'cook', 'gardener', 'maid', 'captain', 'actress'];
 
 	const LEVELS = {
+		tutorial: { n: 4, rooms: 3 },
 		easy: { n: 5, rooms: 4 },
 		medium: { n: 6, rooms: 5 },
 		hard: { n: 7, rooms: 6 }
@@ -354,9 +355,11 @@
 		const fixed = (p) => (dom[p].size === 1 ? dom[p].values().next().value : -1);
 
 		let rounds = 0, changed = true;
+		const order = [];
 		while (changed && rounds < 200) {
 			changed = false;
 			rounds++;
+			for (let p = 0; p < n; p++) if (dom[p].size === 1 && !order.includes(p)) order.push(p);
 			const cut = (p, keep) => {
 				for (const c of [...dom[p]]) if (!keep(c)) { dom[p].delete(c); changed = true; }
 			};
@@ -426,9 +429,11 @@
 				}
 				return can > 0 && sure < 2;
 			});
-			if (dom.some((d) => d.size === 0)) return { solved: false, broken: true, domains: dom, rounds };
+			if (dom.some((d) => d.size === 0)) return { solved: false, broken: true, domains: dom, rounds, order };
 		}
-		return { solved: dom.every((d) => d.size === 1), domains: dom, rounds };
+		// order: who a player can pin down first, second… (the tutorial walks through it)
+		for (let p = 0; p < n; p++) if (dom[p].size === 1 && !order.includes(p)) order.push(p);
+		return { solved: dom.every((d) => d.size === 1), domains: dom, rounds, order };
 	}
 
 	function allTrueClues(pz, pos) {
@@ -455,13 +460,14 @@
 	}
 
 	const WEIGHTS = {
+		tutorial: { room: 6, on: 5, beside: 2, same: 1, notRoom: 0.5, standing: 0.2, diff: 0.3, above: 0.1, left: 0.1, alone: 0.5, row: 0, col: 0 },
 		easy: { room: 6, on: 4, beside: 3, same: 2, notRoom: 1, standing: 1, diff: 1, above: 0.3, left: 0.3, alone: 1, row: 0.2, col: 0.2 },
 		medium: { room: 2.5, on: 2.5, beside: 3, same: 2, notRoom: 2, standing: 1.5, diff: 2, above: 1, left: 1, alone: 1.5, row: 0.3, col: 0.3 },
 		hard: { room: 0.6, on: 1.5, beside: 3, same: 1.5, notRoom: 3, standing: 2, diff: 3, above: 2, left: 2, alone: 2, row: 0.4, col: 0.4 }
 	};
 
 	// Easy keeps a few spare clues so the logic flows; medium and hard drop every clue that is not needed.
-	const SPARE = { easy: 2, medium: 0, hard: 0 };
+	const SPARE = { tutorial: 1, easy: 2, medium: 0, hard: 0 };
 
 	const PLACES = 8, EVENTS = 6;
 

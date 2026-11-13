@@ -422,3 +422,48 @@ a { color: inherit; }
 	.tool { height: 52px; }
 	.btn-red { height: 50px; }
 }
+
+/* ---------- tutorial coach ---------- */
+
+.clue-card.coaching .clue-head, .clue-card.coaching .clue-rule, .clue-card.coaching .clue-list { display: none; }
+.clue-card.coaching { overflow-y: auto; }
+.coach { position: relative; padding: 2px 0 4px; animation: rise 0.2s ease-out; }
+.coach > b, .coach > b + p, .coach > p:first-child { padding-right: 90px; }
+.coaching ~ .toolbar .tool { opacity: 0.4; }
+.coach b { display: block; font-family: var(--serif); font-weight: 900; font-size: 20px; }
+.coach p { margin: 6px 0 0; font-size: 15px; line-height: 1.4; color: var(--ink); }
+.coach q { display: block; margin: 6px 0 8px; padding: 8px 10px; border-left: 3px solid var(--red); background: rgba(255,255,255,0.45); font-style: italic; quotes: none; }
+.coach span { display: block; font-weight: 600; }
+.coach-row { margin-top: 10px; display: flex; justify-content: flex-end; }
+.coach .btn-red { height: 46px; font-size: 16px; }
+.coach-skip { position: absolute; top: -6px; right: -6px; border: 0; background: none; color: #5C5242; font-size: 13px; font-weight: 600; text-decoration: underline; padding: 8px; min-height: 44px; }
+.cell.hl::after {
+	content: ''; position: absolute; inset: 1px; border-radius: 6px; z-index: 4; pointer-events: none;
+	border: 3px solid var(--gold-hi); background: rgba(241,213,138,0.28); box-shadow: 0 0 16px rgba(241,213,138,0.95), inset 0 0 16px rgba(241,213,138,0.6);
+	animation: glow 1s ease-in-out infinite alternate;
+}
+.chip.hl .chip-face, .btn-red.hl { animation: glow 1s ease-in-out infinite alternate; }
+.chip.hl .chip-face { box-shadow: 0 0 0 3px var(--gold-hi), 0 0 18px rgba(241,213,138,0.9); }
+.btn-red.hl { box-shadow: 0 0 0 3px var(--gold-hi), 0 0 22px rgba(241,213,138,0.9); }
+.clue.hl { background: rgba(241,213,138,0.55); border-radius: 6px; margin: 0 -6px; padding-left: 6px; padding-right: 6px; }
+@keyframes glow { from { opacity: 0.65; } to { opacity: 1; } }
+
+/* ---------- languages ---------- */
+
+.lang-list { margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; max-height: 60vh; overflow-y: auto; }
+.lang {
+	display: flex; align-items: center; justify-content: space-between; gap: 8px;
+	min-height: 48px; padding: 0 14px; border-radius: 10px;
+	border: 1px solid #A8875A; background: rgba(255,255,255,0.35); color: var(--ink); font-weight: 600; font-size: 15px; text-align: left;
+}
+.lang.on { background: var(--ink); color: var(--gold-hi); border-color: var(--ink); }
+.tool { overflow: hidden; }
+.tool { font-size: 11.5px; letter-spacing: -0.01em; white-space: nowrap; }
+.toolbar .btn-red { font-size: 15px; overflow: hidden; text-overflow: ellipsis; }
+
+/* Japanese and Chinese: system fonts, no word breaking inside words, smaller display sizes */
+:lang(ja) body, :lang(zh) body { font-family: var(--sans), 'Hiragino Sans', 'Noto Sans CJK JP', 'Noto Sans TC', 'PingFang TC', sans-serif; }
+:lang(ja) .big-title, :lang(zh) .big-title { font-size: 24px; word-break: keep-all; }
+:lang(ja) .news h2, :lang(zh) .news h2 { font-size: 26px; word-break: keep-all; }
+:lang(ja) .case-title, :lang(zh) .case-title { word-break: keep-all; }
+:lang(ja) .ribbon, :lang(zh) .ribbon, :lang(ja) .label-mono, :lang(zh) .label-mono { letter-spacing: 0.08em; }

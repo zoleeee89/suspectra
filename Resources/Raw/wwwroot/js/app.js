@@ -45,6 +45,7 @@
 	const EPOCH = Date.UTC(2026, 0, 1);
 
 	function caseInfo(id) {
+		if (id === 'tutorial') return { id, level: 'tutorial', tutorial: true, no: 0 };
 		if (id.startsWith('d-')) {
 			const day = id.slice(2);
 			return { id, level: 'medium', daily: true, day, no: Math.floor((Date.parse(day) - EPOCH) / 864e5) + 1 };
@@ -61,7 +62,10 @@
 
 	const keyOf = (pz, p) => (p === pz.n - 1 ? 'victim' : pz.suspects[p]);
 	const nameOf = (key) => t('name_' + key);
-	const objOf = (key) => [t('art_' + key), t('name_' + key)].filter(Boolean).join(' ');
+	const objOf = (key) => {
+		const art = t('art_' + key), name = t('name_' + key);
+		return !art ? name : art.endsWith("'") ? art + name : art + ' ' + name;
+	};
 	const subjOf = (key) => { const s = objOf(key); return s.charAt(0).toUpperCase() + s.slice(1); };
 	const roomName = (type) => t('room_' + type);
 
@@ -73,7 +77,7 @@
 	const clock = (pz) => `${pz.hour}:${String(pz.minute).padStart(2, '0')}`;
 
 	function clueText(pz, c) {
-		const v = { P: subjOf(keyOf(pz, c.p)), q: c.q != null ? objOf(keyOf(pz, c.q)) : '' };
+		const v = { P: subjOf(keyOf(pz, c.p)), p: objOf(keyOf(pz, c.p)), q: c.q != null ? objOf(keyOf(pz, c.q)) : '' };
 		if (c.r != null) v.in = t('in_' + pz.rooms[c.r]);
 		if (c.t === 'on') v.on = t('on_' + c.item);
 		if (c.t === 'beside') v.near = t('near_' + c.item);
@@ -264,9 +268,10 @@
 			<div class="scroll">
 				<div class="page-title">${esc(t('settingsTitle'))}</div>
 				<div class="settings">
-					<div class="row"><span>${esc(t('language'))}</span><span class="seg">${S.languages.map((l) => `<button type="button" class="${l === lang ? 'on' : ''}" data-act="lang" data-lang="${l}">${esc(window.SusStrings.names[l])}</button>`).join('')}</span></div>
+					<button type="button" class="row" data-act="langSheet"><span>${esc(t('language'))}</span><small>${esc(window.SusStrings.names[lang])}</small></button>
 					${toggle('sound')}
 					${toggle('haptics')}
+					<button type="button" class="row" data-act="tutorial"><span>${esc(t('tutorial'))}</span>${ICON.arrow.replace('<svg', '<svg width="20" height="20"')}</button>
 					<button type="button" class="row" data-act="rules"><span>${esc(t('howTo'))}</span>${ICON.arrow.replace('<svg', '<svg width="20" height="20"')}</button>
 					<button type="button" class="row" data-act="page" data-page="privacy"><span>${esc(t('privacy'))}</span>${ICON.arrow.replace('<svg', '<svg width="20" height="20"')}</button>
 					<button type="button" class="row" data-act="page" data-page="support"><span>${esc(t('support'))}</span>${ICON.arrow.replace('<svg', '<svg width="20" height="20"')}</button>
@@ -276,6 +281,17 @@
 			</div>
 			${nav('settings')}
 		</section>`;
+	}
+
+	function showLanguages() {
+		const lang = S.language();
+		const el = document.createElement('div');
+		el.className = 'overlay';
+		el.innerHTML = `<div class="sheet paper" role="dialog" aria-modal="true" aria-label="${esc(t('language'))}">
+			<h3>${esc(t('language'))}</h3>
+			<div class="lang-list">${S.languages.map((l) => `<button type="button" class="lang ${l === lang ? 'on' : ''}" data-act="lang" data-lang="${l}" lang="${l}">${esc(window.SusStrings.names[l])}${l === lang ? ICON.check.replace('<svg', '<svg width="18" height="18"') : ''}</button>`).join('')}</div>
+		</div>`;
+		app.appendChild(el);
 	}
 
 	function showRules(after) {
@@ -308,8 +324,8 @@
 				elapsed: saved?.elapsed ?? 0, hints: saved?.hints ?? 0, mistakes: saved?.mistakes ?? 0,
 				resumeAt: Date.now()
 			};
+			if (game.info.tutorial) startTutorial();
 			renderBoard();
-			if (!S.settings.get('rulesSeen')) showRules();
 		}, 30);
 	}
 
@@ -335,6 +351,7 @@
 	}
 
 	function persist() {
+		if (game.info.tutorial) return;
 		const p = prog();
 		p.saved[game.id] = { cells: game.cells, elapsed: elapsed(), hints: game.hints, mistakes: game.mistakes };
 		saveProg(p);
@@ -412,7 +429,8 @@
 				inner += `<span class="notes">${c.notes.map((p) => (p === v ? '<i class="note-dot v"></i>' : `<i class="note-dot" style="background:${A.colour(pz.suspects[p])}"></i>`)).join('')}</span>`;
 			}
 			if (labels[i]) inner += `<span class="room-label ${x === 0 ? 'l' : x === n - 1 ? 'r' : ''}">${esc(labels[i])}</span>`;
-			html += `<button type="button" class="cell ${conflict ? 'conflict' : ''}" style="height:${s}px" data-act="cell" data-c="${i}" aria-label="${esc(label)}">${inner}</button>`;
+			const hl = tutStep()?.kind === 'place' && tutStep().cell === i;
+			html += `<button type="button" class="cell ${conflict ? 'conflict' : ''} ${hl ? 'hl' : ''}" style="height:${s}px" data-act="cell" data-c="${i}" aria-label="${esc(label)}">${inner}</button>`;
 		});
 		return html;
 	}
@@ -424,7 +442,8 @@
 		let out = '';
 		for (let p = 0; p < pz.n; p++) {
 			const key = keyOf(pz, p);
-			out += `<button type="button" class="chip ${key === 'victim' ? 'victim' : ''} ${pos[p] >= 0 ? 'placed' : ''} ${game.sel === p ? 'active' : ''}" data-act="pick" data-p="${p}" aria-pressed="${game.sel === p}">
+			const hl = tutStep()?.kind === 'place' && tutStep().p === p && game.sel !== p;
+			out += `<button type="button" class="chip ${key === 'victim' ? 'victim' : ''} ${pos[p] >= 0 ? 'placed' : ''} ${game.sel === p ? 'active' : ''} ${hl ? 'hl' : ''}" data-act="pick" data-p="${p}" aria-pressed="${game.sel === p}">
 				<span class="chip-face">${face(key, size)}</span><span class="chip-name">${esc(key === 'victim' ? t('victimLabel') : nameOf(key))}</span></button>`;
 		}
 		return out;
@@ -433,9 +452,10 @@
 	function cluesHTML() {
 		const { pz } = game;
 		const pos = positions();
-		return pz.clues.map((c) => {
+		const focus = tutStep()?.kind === 'place' ? tutStep().clue : -1;
+		return pz.clues.map((c, i) => {
 			const st = R.clueStatus(pz, c, pos);
-			const cls = st === true ? 'ok' : st === false ? 'bad' : '';
+			const cls = (st === true ? 'ok' : st === false ? 'bad' : '') + (i === focus ? ' hl' : '');
 			const mark = st === true ? `<span style="color:#A8261A;width:22px;height:22px;display:flex">${ICON.check}</span>` : '<span class="ring"></span>';
 			return `<li class="clue ${cls}"><span class="mark">${mark}</span><span class="text">${esc(clueText(pz, c))}</span></li>`;
 		}).join('');
@@ -451,7 +471,7 @@
 		app.innerHTML = `<section class="screen">
 			<div class="topbar">
 				<button type="button" class="round-btn" data-act="leave" aria-label="${esc(t('backHome'))}">${ICON.back}</button>
-				<div class="case-head"><span class="ribbon">${esc(t('caseNo', { n: info.no }))}</span><div class="case-title gold-text">${esc(caseTitle(pz))}</div></div>
+				<div class="case-head"><span class="ribbon">${esc(info.tutorial ? t('tutorial').toUpperCase() : t('caseNo', { n: info.no }))}</span><div class="case-title gold-text">${esc(caseTitle(pz))}</div></div>
 				<div class="pill">${ICON.timer}<span id="timer">${mmss(elapsed())}</span></div>
 			</div>
 			<div class="board-frame"><div class="board" id="board" style="width:${n * s}px;height:${n * s}px">
@@ -460,7 +480,8 @@
 			</div></div>
 			<div class="section-title"><span class="label gold-text">${esc(t('lblSuspects').toUpperCase())}</span><span class="line"><i></i><b></b></span><span class="side" id="placed"></span></div>
 			<div class="tray" id="tray">${trayHTML()}</div>
-			<div class="clue-card paper">
+			<div class="clue-card paper ${game.tut ? 'coaching' : ''}" id="clueCard">
+				<div id="coach"></div>
 				<div class="clue-head"><span>${ICON.magSmall}${esc(t('clues'))}</span><span id="clueCount"></span></div>
 				<div class="clue-rule"></div>
 				<ul class="clue-list" id="clues">${cluesHTML()}</ul>
@@ -470,9 +491,10 @@
 					${['pen', 'pencil', 'eraser'].map((tl) => `<button type="button" class="tool ${game.tool === tl ? 'on' : ''}" data-act="tool" data-tool="${tl}" aria-pressed="${game.tool === tl}">${ICON[tl]}${esc(t(tl))}</button>`).join('')}
 					<button type="button" class="tool" data-act="hint">${ICON.hint}${esc(t('hint'))}</button>
 				</div>
-				<button type="button" class="btn-red" data-act="accuse">${ICON.accuse}${esc(t('accuse'))}</button>
+				<button type="button" class="btn-red ${tutStep()?.kind === 'accuse' ? 'hl' : ''}" data-act="accuse" id="accuseBtn">${ICON.accuse}${esc(t('accuse'))}</button>
 			</div>
 		</section>`;
+		renderCoach();
 		refreshCounts();
 		startClock();
 	}
@@ -492,6 +514,8 @@
 		document.getElementById('tray').innerHTML = trayHTML();
 		document.getElementById('clues').innerHTML = cluesHTML();
 		refreshCounts();
+		renderCoach();
+		document.getElementById('accuseBtn')?.classList.toggle('hl', tutStep()?.kind === 'accuse');
 		persist();
 	}
 
@@ -500,6 +524,83 @@
 		persist();
 		game = null;
 		go('home');
+	}
+
+	// ---------- tutorial: a small fixed case, walked through person by person ----------
+
+	function startTutorial() {
+		const { pz } = game;
+		const order = R.deduce(pz, pz.clues).order;
+		const steps = [{ kind: 'intro' }, { kind: 'house' }];
+		for (const p of order) {
+			// Show the clue that names this person, preferring one about them alone.
+			let clue = pz.clues.findIndex((c) => c.p === p && c.q == null);
+			if (clue < 0) clue = pz.clues.findIndex((c) => c.p === p || c.q === p);
+			steps.push({ kind: 'place', p, cell: pz.solution[p], clue });
+		}
+		steps.push({ kind: 'accuse' });
+		game.tut = { steps, i: 0 };
+	}
+
+	const tutStep = () => (game?.tut ? game.tut.steps[game.tut.i] : null);
+
+	function tutAdvance() {
+		game.tut.i++;
+		refreshBoard();
+	}
+
+	function renderCoach() {
+		const box = document.getElementById('coach');
+		if (!box) return;
+		const st = tutStep();
+		document.getElementById('clueCard')?.classList.toggle('coaching', !!st);
+		if (!st) { box.innerHTML = ''; return; }
+		const { pz } = game;
+		let title = '', body = '', next = false;
+		if (st.kind === 'intro') { title = t('tutWelcomeTitle'); body = esc(t('tutWelcome')); next = true; }
+		else if (st.kind === 'house') { body = esc(t('tutHouse')); next = true; }
+		else if (st.kind === 'place') {
+			const who = keyOf(pz, st.p);
+			const name = who === 'victim' ? t('victimLabel') : nameOf(who);
+			body = st.clue >= 0 ? `${esc(t('tutLook'))}<q>${esc(clueText(pz, pz.clues[st.clue]))}</q>` : esc(t('tutLogic'));
+			body += `<span>${esc(t('tutPick', { who: name }))}</span>`;
+		} else if (st.kind === 'accuse') body = esc(t('tutAccuse'));
+		box.innerHTML = `<div class="coach" role="status">
+			${title ? `<b>${esc(title)}</b>` : ''}<p>${body}</p>
+			<button type="button" class="coach-skip" data-act="tutSkip">${esc(t('tutSkip'))}</button>
+			${next ? `<div class="coach-row"><button type="button" class="btn-red" data-act="tutNext">${esc(t('tutNext'))}${ICON.arrow}</button></div>` : ''}
+		</div>`;
+	}
+
+	function endTutorial() {
+		S.settings.set('tutorialDone', true);
+		S.settings.set('rulesSeen', true);
+	}
+
+	// Only the move the tutorial asks for counts.
+	function tutorialAllows(act, value) {
+		const st = tutStep();
+		if (!st) return true;
+		if (act === 'pick') return st.kind === 'place' && value === st.p;
+		if (act === 'cell') return st.kind === 'place' && game.sel === st.p && value === st.cell;
+		if (act === 'accuse') return st.kind === 'accuse';
+		return false;
+	}
+
+	function hintPressed() {
+		if (game.hints >= 1 && S.ads.rewardReady()) {
+			const el = document.createElement('div');
+			el.className = 'overlay';
+			el.innerHTML = `<div class="sheet paper" role="dialog" aria-modal="true" aria-label="${esc(t('hintAdTitle'))}">
+				<h3>${esc(t('hintAdTitle'))}</h3><p>${esc(t('hintAdText'))}</p>
+				<button type="button" class="btn-red" data-act="watchAd">${ICON.hint.replace('#F1D58A', 'currentColor')}${esc(t('watchAd'))}</button>
+				<button type="button" class="btn-ghost" data-act="closeOverlay">${esc(t('cancel'))}</button>
+			</div>`;
+			app.appendChild(el);
+			return;
+		}
+		// The first hint is free, and with no ad loaded (offline) nobody is left stuck.
+		giveHint();
 	}
 
 	function tapCell(c) {
@@ -579,7 +680,7 @@
 		const el = document.createElement('div');
 		el.className = 'overlay';
 		el.innerHTML = `<div class="sheet paper" role="dialog" aria-modal="true" aria-label="${esc(t('whoKiller'))}">
-			<h3>${esc(t('whoKiller'))}</h3><p>${esc(t('whoKillerSub'))}</p>
+			<h3>${esc(t('whoKiller'))}</h3><p>${esc(game.tut ? t('tutKiller') : t('whoKillerSub'))}</p>
 			<div class="suspect-pick">${pz.suspects.map((k, i) => `<button type="button" class="chip" data-act="charge" data-p="${i}"><span class="chip-face">${face(k, 56)}</span><span class="chip-name">${esc(nameOf(k))}</span></button>`).join('')}</div>
 			<button type="button" class="btn-ghost" data-act="closeOverlay">${esc(t('cancel'))}</button>
 		</div>`;
@@ -589,6 +690,7 @@
 	function charge(p) {
 		app.querySelector('.overlay')?.remove();
 		const { pz } = game;
+		if (game.tut && p !== pz.killer) return toast(t('wrongKiller'));
 		if (p !== pz.killer) {
 			game.mistakes++;
 			persist();
@@ -598,6 +700,13 @@
 		}
 		stopClock();
 		const time = elapsed();
+		if (game.tut) {
+			endTutorial();
+			S.audio.stamp();
+			const r = { id: game.id, info: game.info, pz, stars: 3, time, hints: 0, mistakes: 0, tutorial: true };
+			game = null;
+			return go('verdict', r);
+		}
 		const slips = game.hints + game.mistakes;
 		const stars = slips === 0 ? 3 : slips <= 2 ? 2 : 1;
 		const pr = prog();
@@ -620,9 +729,9 @@
 		const killer = pz.suspects[pz.killer];
 		const roomType = pz.rooms[pz.room[pz.solution[pz.n - 1]]];
 		app.innerHTML = `<section class="screen"><div class="scroll verdict">
-			<div class="topbar" style="padding:14px 0 0"><span class="label-mono">${esc(t('caseNo', { n: r.info.no }))} · ${esc(t('stampSolved'))}</span><button type="button" class="round-btn" data-act="verdictHome" aria-label="${esc(t('backHome'))}">${ICON.back}</button></div>
+			<div class="topbar" style="padding:14px 0 0"><span class="label-mono">${esc(r.tutorial ? t('tutorial').toUpperCase() : t('caseNo', { n: r.info.no }))} · ${esc(t('stampSolved'))}</span><button type="button" class="round-btn" data-act="verdictHome" aria-label="${esc(t('backHome'))}">${ICON.back}</button></div>
 			<div class="mag-row" role="img" aria-label="${r.stars}/3">${[0, 1, 2].map((i) => `<span class="${i < r.stars ? '' : 'off'}" style="transform:rotate(${(i - 1) * 10}deg);display:inline-flex">${ICON.mag}</span>`).join('')}</div>
-			<div class="verdict-line">${esc(t('stars' + r.stars))}</div>
+			<div class="verdict-line">${esc(r.tutorial ? t('tutDone') : t('stars' + r.stars))}</div>
 			<div class="news">
 				<div class="news-mast"><span>${esc(t('paper'))}</span><span>${esc(t('special'))}</span></div>
 				<h2>${esc(t('headline'))}</h2>
@@ -646,6 +755,7 @@
 	}
 
 	function afterVerdict(r, where) {
+		if (r.tutorial) return go('home');
 		S.ads.breakPoint();
 		if (where === 'next' && !r.info.daily && r.info.index < FILES) return go('board', `${r.info.prefix}-${r.info.index + 1}`);
 		if (where === 'next') { casesTab = r.info.daily ? casesTab : r.info.level; return go('cases'); }
@@ -663,15 +773,31 @@
 			case 'open': return go('board', el.dataset.id);
 			case 'tab': casesTab = el.dataset.level; return renderCases();
 			case 'lang': S.setLanguage(el.dataset.lang); return renderSettings();
+			case 'langSheet': return showLanguages();
+			case 'tutorial': return go('board', 'tutorial');
+			case 'tutNext': return tutAdvance();
+			case 'tutSkip':
+				endTutorial();
+				stopClock();
+				game = null;
+				return go('home');
+			case 'watchAd':
+				el.closest('.overlay')?.remove();
+				return S.ads.reward((earned) => (earned ? giveHint() : toast(t('noReward'))));
 			case 'toggle': S.settings.set(el.dataset.name, !S.settings.get(el.dataset.name)); return renderSettings();
 			case 'rules': return showRules();
 			case 'page': return S.openPage(el.dataset.page);
 			case 'adprivacy': return S.ads.showPrivacy();
 			case 'closeOverlay': return el.closest('.overlay')?.remove();
 			case 'leave': return leaveBoard();
-			case 'cell': return tapCell(+el.dataset.c);
+			case 'cell':
+				if (!tutorialAllows('cell', +el.dataset.c)) return;
+				tapCell(+el.dataset.c);
+				if (tutStep()?.kind === 'place' && game.cells[tutStep().cell].p === tutStep().p) tutAdvance();
+				return;
 			case 'pick': {
 				const p = +el.dataset.p;
+				if (!tutorialAllows('pick', p)) return;
 				game.sel = game.sel === p ? -1 : p;
 				if (game.tool === 'eraser') game.tool = 'pen';
 				document.querySelectorAll('.tool').forEach((b) => { const on = b.dataset.tool === game.tool; b.classList.toggle('on', on); if (b.dataset.tool) b.setAttribute('aria-pressed', on); });
@@ -679,13 +805,14 @@
 				return;
 			}
 			case 'tool':
+				if (game.tut) return;
 				game.tool = el.dataset.tool;
 				if (game.tool === 'eraser') game.sel = -1;
 				document.querySelectorAll('.tool').forEach((b) => { const on = b.dataset.tool === game.tool; b.classList.toggle('on', on); if (b.dataset.tool) b.setAttribute('aria-pressed', on); });
 				document.getElementById('tray').innerHTML = trayHTML();
 				return;
-			case 'hint': return giveHint();
-			case 'accuse': return accuse();
+			case 'hint': return game.tut ? undefined : hintPressed();
+			case 'accuse': return tutorialAllows('accuse') ? accuse() : undefined;
 			case 'charge': return charge(+el.dataset.p);
 			case 'verdictNext': return afterVerdict(app._verdict, 'next');
 			case 'verdictHome': return afterVerdict(app._verdict, 'home');
@@ -705,5 +832,6 @@
 
 	window.addEventListener('sus:privacy', () => { if (screen === 'settings') renderSettings(); });
 
-	go('home');
+	if (S.settings.get('tutorialDone')) go('home');
+	else go('board', 'tutorial');
 })();

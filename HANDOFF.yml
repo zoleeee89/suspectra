@@ -1,4 +1,4 @@
-# Átadás a következő Claude Code sessionnek. Állapot: 2026-11-12.
+# Átadás a következő Claude Code sessionnek. Állapot: 2026-11-13.
 # Titok nincs ebben a fájlban, és ide nem is szabad titkot írni.
 
 projekt:
@@ -27,7 +27,7 @@ technika:
       - js/art.js – padlók, bútorok és portrék SVG-ben (50 egységes cellára rajzolva)
       - js/app.js – képernyők: kezdőlap (napi ügy), aktatár (3 nehézség × 30 ügy + heti napi ügyek), nyomozás, ítélet, beállítások
       - js/sus.js – mentés, beállítások, nyelv, hang, natív híd, reklámütemezés (window.Sus)
-      - js/strings.js – nyelvek (most hu, en)
+      - js/strings.js – 13 nyelv (hu, en, de, fr, it, es, pt, pl, nl, sk, ro, ja, zh-Hant); minden kulcs minden nyelvben. Ellenőrzés: lásd tesztek. pl/sk nyomok kettőspontos jegyzetstílusban (nemre semleges), it fölött/balra mondatok {p}/{q} formában.
       - css/app.css, css/fonts.css, fonts/ (Fraunces, Inter, Courier Prime – OFL, helyben, net nélkül is megy)
     nativ: MainPage.xaml.cs (rezgés tap/error/win, Android vissza gomb → Sus.goHub, reklám, linkek), AdService.cs (Retrokonból)
     jatekszabalyok:
@@ -38,6 +38,7 @@ technika:
     szintek: easy 5×5 / 4 szoba, medium 6×6 / 5 szoba, hard 7×7 / 6 szoba
     azonositok: "napi ügy d-ÉÉÉÉ-HH-NN (UTC), aktatár e-1..30, m-1..30, h-1..30; seed = azonosító, minden telefonon ugyanaz az ügy"
     mentes: "localStorage: sus.settings, sus.progress (solved, saved), sus.ads"
+  teszt_nyelvek: node -e "global.window={};require('./Resources/Raw/wwwroot/js/strings.js');const S=window.SusStrings;const b=Object.keys(S.hu);for(const l of Object.keys(S.names)){const m=b.filter(k=>!(k in S[l]));if(m.length)console.log(l,m)}"
   teszt: node tests/rules.test.js 60  (mindhárom szint: egyértelmű, levezethető, szabályos, determinisztikus, időmérés)
   android_build: dotnet build Suspectra.csproj -f net10.0-android -p:AndroidSdkDirectory="C:\Program Files (x86)\Android\android-sdk" -p:JavaSdkDirectory="C:\Program Files\Android\openjdk"
 
@@ -48,10 +49,13 @@ allapot:
     - Teljes játékmenet: Toll / Ceruza (színes pöttyök) / Radír / Tipp / Vádemelés + gyilkos kiválasztása, ütközésjelzés, nyomok automatikus kipipálása, időmérő, csillagok
     - Kezdőlap napi üggyel és sorozattal, aktatár heti csíkkal és szintenkénti feloldással, ítélet-újság, beállítások, szabályok első induláskor
     - Böngészőben kipróbálva (Chromium, 390×844 és 360×640, hu és en), konzolhiba nincs
+    - 13 nyelv, nyelvválasztó lap a Beállításokban; hu/de/fr/ja/zh/pl oktató végigjátszva böngészőben, szöveg-túlcsordulás nincs
+    - Interaktív oktató (rögzített 4×4-es 'tutorial' ügy, deduce().order szerinti lépések, kiemelt mező/szereplő/nyom); első indításkor automatikusan, Beállítások → Oktató; kihagyható
+    - Tipp: ügyenként 1 ingyenes, utána jutalmazott reklám (ha van betöltött; ha nincs, a tipp jár reklám nélkül). Teljes képernyős reklám ügy lezárása után (első 3 szünet ingyenes, utána minden 3., min. 150 mp)
   reklam: Csak a Google tesztegységei (Android és iOS). Éles előtt AdMob-ban létre kell hozni az appot, és cserélni: AndroidManifest, Info.plist, AdService.AdUnits.
   kovetkezo_lepesek:
     - Visual Studióban Android-build és futtatás telefonon/emulátoron
-    - A maradék 11 nyelv (de, fr, it, es, pt, pl, nl, sk, ro, ja, zh) a strings.js-be, majd a nyelvválasztóba
+    - Fordítások anyanyelvi átnézése (főleg ja, zh, pl, sk, ro)
     - Weboldal + jogi oldalak (privacy, support, delete) a suspectra.cointrail.hu alá (a MainPage és a sus.js ezt a címet használja), app-ads.txt
     - Esetleg szerver (napi ranglista) a Retrokon PHP/PostgreSQL mintájára; most minden offline
     - Hang/animáció finomítás, oktató első pálya, bolti képek és szövegek
